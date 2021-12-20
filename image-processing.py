@@ -44,7 +44,7 @@ def process_image_hough_circles(image, out_type):
     img_equalized = cl_ahe.apply(img_grayscale)
     if show_images: show_image(img_equalized)
 
-    # Then we blurry the image so it's easier to work with.
+    # Then we blur the image so it's easier to work with.
     # We don't want edges as strong as the ones in the dataset for recognizing circles.
     img_blurred = cv2.medianBlur(img_equalized, 15)
     if show_images: show_image(img_blurred)
