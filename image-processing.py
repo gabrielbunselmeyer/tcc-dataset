@@ -71,7 +71,11 @@ def process_image_hough_circles(image, out_type):
     # Here we go through the circles found (usually 1-2) and create a mask with them.
     # This mask is used to match the original cropped image so we're left with the end result.
     for c in circles[0, :]:
-        img_cropped = image[c[1] - c[2]:c[1] + c[2], c[0] - c[2]:c[0] + c[2]]
+        if "grayscale" in out_type:
+            img_cropped = img_grayscale[c[1] - c[2]:c[1] + c[2], c[0] - c[2]:c[0] + c[2]]
+        else:
+            img_cropped = image[c[1] - c[2]:c[1] + c[2], c[0] - c[2]:c[0] + c[2]]
+
         img_mask = np.zeros_like(img_cropped)
         cv2.circle(img_mask, (c[2], c[2]), c[2], (255, 255, 255), -1)
         img_output = np.zeros_like(img_cropped)
