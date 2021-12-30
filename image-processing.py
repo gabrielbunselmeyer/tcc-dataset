@@ -1,5 +1,6 @@
 import cv2 as cv2
 import numpy as np
+import math
 import os
 
 ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -68,6 +69,10 @@ def process_image_hough_circles(image, out_type):
 
     img_output = None
 
+    # As the method used can find multiple circles for the same image, we only want the biggest one, as that's always
+    # the best match for our specific use-case. This is used for cropping squares inside the biggest circle.
+    biggest_circle_radius = 0
+
     # Here we go through the circles found (usually 1-2) and create a mask with them.
     # This mask is used to match the original cropped image so we're left with the end result.
     for c in circles[0, :]:
@@ -81,7 +86,30 @@ def process_image_hough_circles(image, out_type):
         img_output = np.zeros_like(img_cropped)
         img_output[img_mask == 255] = img_cropped[img_mask == 255]
 
+        if int(c[2]) > biggest_circle_radius: biggest_circle_radius = int(c[2])
+
+    if "square" in out_type:
+        img_output = crop_square_inside_circle(img_output, biggest_circle_radius)
+
     return img_output
+
+
+def crop_square_inside_circle(image, radius):
+    square_side = math.sqrt(radius * radius * 2)
+    square_half = square_side * 0.5
+
+    x = int(radius - square_half)
+    y = int(radius - square_half)
+    w = int(square_side)
+    h = int(square_side)
+
+    img_mask = np.zeros_like(image)
+    img_out = np.zeros_like(image)
+
+    cv2.rectangle(img_mask, (x, y), ((x + w), (y + h)), (255, 255, 255), -1)
+
+    img_out[img_mask == 255] = image[img_mask == 255]
+    return img_out[y: y + h, x: x + w]
 
 
 # Not in use. Favoured the Hough approach in the functions above.
