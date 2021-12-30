@@ -18,7 +18,7 @@ These roughly represent the steps taken during the processing to get the raw ima
 ## usage
 As an initial and exploratory project, the dataset is public for future usage. There's no need for asking for permission before using the contents of this repository, but I'd appreciate a shoutout if it's of help. For good measure, and at least in spirit, everything in here is under the [DO WHATEVER THE FUCK YOU WANT TO PUBLIC LICENSE](http://www.wtfpl.net/about/).
 
-Copyright © 2021 Your Name <gabrielbunselmeyer@gmail.com>
+Copyright © 2021 Gabriel Corrêa Bunselmeyer Ferreira <gabrielbunselmeyer@gmail.com>
 This work is free. You can redistribute it and/or modify it under the
 terms of the Do What The Fuck You Want To Public License, Version 2,
 as published by Sam Hocevar. See the COPYING file for more details.
