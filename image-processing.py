@@ -1,7 +1,8 @@
 import cv2 as cv2
 import numpy as np
-import math
 import os
+
+import utils
 
 ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
 input_dir = ROOT_DIR + "\\dataset-cropped\\"
@@ -43,12 +44,12 @@ def process_image_hough_circles(image, out_type):
     img_grayscale = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
     cl_ahe = cv2.createCLAHE(2.0, (8, 8))
     img_equalized = cl_ahe.apply(img_grayscale)
-    if show_images: show_image(img_equalized)
+    if show_images: utils.show_image(img_equalized)
 
     # Then we blur the image so it's easier to work with.
     # We don't want edges as strong as the ones in the dataset for recognizing circles.
     img_blurred = cv2.medianBlur(img_equalized, 15)
-    if show_images: show_image(img_blurred)
+    if show_images: utils.show_image(img_blurred)
 
     # HoughCircles takes care of the whole process for detecting the circles.
     # It does a CannyEdge pass automatically. Param1 is the higher threshold for it.
@@ -89,27 +90,9 @@ def process_image_hough_circles(image, out_type):
         if int(c[2]) > biggest_circle_radius: biggest_circle_radius = int(c[2])
 
     if "square" in out_type:
-        img_output = crop_square_inside_circle(img_output, biggest_circle_radius)
+        img_output = utils.crop_square_inside_circle(img_output, biggest_circle_radius)
 
     return img_output
-
-
-def crop_square_inside_circle(image, radius):
-    square_side = math.sqrt(radius * radius * 2)
-    square_half = square_side * 0.5
-
-    x = int(radius - square_half)
-    y = int(radius - square_half)
-    w = int(square_side)
-    h = int(square_side)
-
-    img_mask = np.zeros_like(image)
-    img_out = np.zeros_like(image)
-
-    cv2.rectangle(img_mask, (x, y), ((x + w), (y + h)), (255, 255, 255), -1)
-
-    img_out[img_mask == 255] = image[img_mask == 255]
-    return img_out[y: y + h, x: x + w]
 
 
 # Not in use. Favoured the Hough approach in the functions above.
@@ -118,22 +101,22 @@ def process_image_manually(image, out_type):
     img_grayscale = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
     cl_ahe = cv2.createCLAHE(2.0, (8, 8))
     img_equalized = cl_ahe.apply(img_grayscale)
-    if show_images: show_image(img_equalized)
+    if show_images: utils.show_image(img_equalized)
 
     # Then we blurry the image so it's easier to work with.
     # We don't want edges as strong as the ones in the dataset for recognizing circles.
     img_blurred = cv2.medianBlur(img_equalized, 5)
-    if show_images: show_image(img_blurred)
+    if show_images: utils.show_image(img_blurred)
 
     # Then we use Canny Edge Detection to, well, get edges.
     # Context: https://docs.opencv.org/4.x/da/d22/tutorial_py_canny.html
     img_edges = cv2.Canny(img_blurred, 70, 450)
-    if show_images: show_image(img_edges)
+    if show_images: utils.show_image(img_edges)
 
     # Dilate the edges to try and always have them closing in a circle.
     kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (15, 15))
     img_dilated = cv2.morphologyEx(img_edges, cv2.MORPH_CLOSE, kernel)
-    if show_images: show_image(img_dilated)
+    if show_images: utils.show_image(img_dilated)
 
     # Find all contours in the image.
     contours, hierarchy = cv2.findContours(img_dilated, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
@@ -144,16 +127,16 @@ def process_image_manually(image, out_type):
     # This changes everything inside the contour to white.
     img_mask = np.zeros_like(img_edges)
     img_mask = cv2.drawContours(img_mask, contours, contour_index, 255, -1)
-    if show_images: show_image(img_mask)
+    if show_images: utils.show_image(img_mask)
 
     # Then we copy the white part of the image to img_output.
     img_output = np.zeros_like(image)
     img_output[img_mask == 255] = image[img_mask == 255]
-    if show_images: show_image(img_output)
+    if show_images: utils.show_image(img_output)
 
     # Now we just need to resize the output image and cut its borders.
-    img_resized_output = cut_circular_borders(img_output, chosen_contour)
-    if show_images: show_image(img_resized_output)
+    img_resized_output = utils.cut_circular_borders(img_output, chosen_contour)
+    if show_images: utils.show_image(img_resized_output)
 
     return img_resized_output
 
@@ -175,60 +158,11 @@ def find_correct_contour(contours, img_edges):
                 print("# Contour area: " + str(area))
 
     if contour_index == -1:
-        show_image(img_edges)
+        utils.show_image(img_edges)
         raise Exception("Failed to find correct circular contour in find_correct_contour!")
 
     return contour_index, chosen_contour
 
 
-def cut_circular_borders(image, chosen_contour):
-    x, y, w, h = cv2.boundingRect(chosen_contour)
-    return image[y: y + h, x: x + w]
-
-
-def clean_processed_images():
-    for subdir, dirs, files in os.walk(output_dir):
-        for species_dir, species_dirs, species_files in os.walk(subdir):
-            for filename in os.listdir(species_dir):
-                file_path = os.path.join(species_dir, filename)
-                if debug_mode:
-                    print("Deleting " + filename)
-                try:
-                    os.remove(file_path)
-                except Exception as e:
-                    print('Failed to delete %s. Reason: %s' % (file_path, e))
-
-
-def show_image(image, name="image"):
-    image_resized = resize_with_aspect_ratio(image, height=960)
-    cv2.imshow(name, image_resized)
-    cv2.waitKey(0)
-    cv2.destroyAllWindows()
-
-
-def paint_circles_on_image(image, circles):
-    for i in circles[0, :]:
-        cv2.circle(image, (i[0], i[1]), i[2], (0, 255, 0), 2)
-        cv2.circle(image, (i[0], i[1]), 2, (0, 0, 255), 3)
-
-    return image
-
-
-def resize_with_aspect_ratio(image, width=None, height=None, inter=cv2.INTER_AREA):
-    dim = None
-    (h, w) = image.shape[:2]
-
-    if width is None and height is None:
-        return image
-    if width is None:
-        r = height / float(h)
-        dim = (int(w * r), height)
-    else:
-        r = width / float(w)
-        dim = (width, int(h * r))
-
-    return cv2.resize(image, dim, interpolation=inter)
-
-
-clean_processed_images()
+utils.clean_processed_images(output_dir, debug_mode)
 generate_processed_images()
